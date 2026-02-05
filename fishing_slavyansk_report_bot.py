@@ -1,4 +1,6 @@
 import asyncio
+import os
+import logging
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
@@ -15,7 +17,6 @@ from aiogram.client.default import DefaultBotProperties
 
 # ============ FLASK ДЛЯ RENDER ============
 from flask import Flask
-import os
 
 app = Flask(__name__)
 
@@ -27,19 +28,14 @@ def home():
 def health():
     return "OK", 200
 
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    print(f"✅ Веб-сервер запущен на порту {port}")
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
-
 # ==================== НАСТРОЙКИ ====================
 TOKEN = "8406827750:AAFj6wZlT0a6PKnShyXstrLZiguOddDu-VE"
-
 CHANNEL_ID = -1002458862246
 CHAT_ID = -1001790011004
 THREAD_ID = 15708
 # ===================================================
 
+# Инициализация бота
 bot = Bot(
     token=TOKEN,
     default=DefaultBotProperties(parse_mode="HTML")
@@ -1062,31 +1058,34 @@ async def cmd_start_full(message: types.Message, state: FSMContext):
         await show_start(message.from_user.id, state)
 
 # ==================== ЗАПУСК ====================
-async def main():
+async def run_bot():
+    """Запускает Telegram бота"""
     print("🤖 Бот запущен...")
     print("📊 Ожидаю сообщения...")
     await dp.start_polling(bot)
 
-if __name__ == "__main__":
-    print("🚀 Запуск Flask веб-сервера...")
-    
-    # ЗАПУСКАЕМ Flask ПЕРВЫМ и ЖДЁМ
-    import threading
-    import time
-    
-    def start_flask():
-        port = int(os.environ.get("PORT", 10000))
-        print(f"🌐 Flask запускается на порту {port}")
-        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
-    
+def run_flask_server():
+    """Запускает Flask сервер"""
+    port = int(os.environ.get("PORT", 10000))
+    print(f"🌐 Flask запускается на порту {port}")
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+
+async def main():
+    """Основная функция запуска"""
     # Запускаем Flask в отдельном потоке
-    flask_thread = threading.Thread(target=start_flask, daemon=True)
+    import threading
+    flask_thread = threading.Thread(target=run_flask_server, daemon=True)
     flask_thread.start()
     
-    # Ждем 3 секунды чтобы Flask успел запуститься
-    time.sleep(3)
-    
-    # Теперь запускаем бота
+    print("🌐 Flask запущен в отдельном потоке")
     print("🤖 Запуск Telegram бота...")
-    asyncio.run(main())
+    
+    # Запускаем бота
+    await run_bot()
 
+if __name__ == "__main__":
+    # Настраиваем логирование
+    logging.basicConfig(level=logging.INFO)
+    
+    # Запускаем асинхронный код
+    asyncio.run(main())
