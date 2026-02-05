@@ -1049,8 +1049,24 @@ async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        print(f"💥 Критическая ошибка: {e}")
-        input("Нажмите Enter для выхода")
+    print("🚀 Запуск Flask веб-сервера...")
+    
+    # ЗАПУСКАЕМ Flask ПЕРВЫМ и ЖДЁМ
+    import threading
+    import time
+    
+    def start_flask():
+        port = int(os.environ.get("PORT", 10000))
+        print(f"🌐 Flask запускается на порту {port}")
+        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+    
+    # Запускаем Flask в отдельном потоке
+    flask_thread = threading.Thread(target=start_flask, daemon=True)
+    flask_thread.start()
+    
+    # Ждем 3 секунды чтобы Flask успел запуститься
+    time.sleep(3)
+    
+    # Теперь запускаем бота
+    print("🤖 Запуск Telegram бота...")
+    asyncio.run(main())
