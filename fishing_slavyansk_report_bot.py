@@ -13,6 +13,25 @@ from aiogram.types import (
 )
 from aiogram.client.default import DefaultBotProperties
 
+# ============ FLASK ДЛЯ RENDER ============
+from flask import Flask
+import os
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "🎣 Бот отчётов о рыбалке работает!"
+
+@app.route('/health')
+def health():
+    return "OK", 200
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    print(f"✅ Веб-сервер запущен на порту {port}")
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+
 # ==================== НАСТРОЙКИ ====================
 TOKEN = "8406827750:AAFj6wZlT0a6PKnShyXstrLZiguOddDu-VE"
 
@@ -1070,3 +1089,4 @@ if __name__ == "__main__":
     # Теперь запускаем бота
     print("🤖 Запуск Telegram бота...")
     asyncio.run(main())
+
