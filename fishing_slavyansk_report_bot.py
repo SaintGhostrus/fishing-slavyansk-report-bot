@@ -1,6 +1,10 @@
+
+
+```python
 import asyncio
 import os
 import logging
+import aiohttp
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
@@ -27,6 +31,54 @@ def home():
 @app.route('/health')
 def health():
     return "OK", 200
+
+# ==================== KEEP-ALIVE ====================
+async def ping_server():
+    """Периодически отправляет запросы к серверу, чтобы он не засыпал"""
+    
+    # URL вашего сервиса на Render (ЗАМЕНИЛ на ваш!)
+    SERVICE_URL = "https://fishing-slavyansk-report-bot.onrender.com"
+    
+    # Счётчик запросов
+    ping_count = 0
+    
+    print(f"🔄 Keep-alive запущен. Будет обращаться к: {SERVICE_URL}")
+    
+    while True:
+        try:
+            ping_count += 1
+            current_time = datetime.now().strftime("%H:%M:%S")
+            
+            # Создаем сессию
+            async with aiohttp.ClientSession() as session:
+                # Отправляем GET-запрос к серверу
+                async with session.get(SERVICE_URL, timeout=30) as response:
+                    status = response.status
+                    
+                    # Логируем результат
+                    if status == 200:
+                        print(f"✅ [{current_time}] Keep-alive #{ping_count}: Сервер отвечает (Status: {status})")
+                    else:
+                        print(f"⚠️ [{current_time}] Keep-alive #{ping_count}: Необычный статус (Status: {status})")
+        
+        except asyncio.TimeoutError:
+            current_time = datetime.now().strftime("%H:%M:%S")
+            print(f"⏱️ [{current_time}] Keep-alive #{ping_count}: Таймаут (сервер просыпается...)")
+        
+        except aiohttp.ClientConnectorError:
+            current_time = datetime.now().strftime("%H:%M:%S")
+            print(f"🌐 [{current_time}] Keep-alive #{ping_count}: Не удалось подключиться (сервер спит)")
+        
+        except Exception as e:
+            current_time = datetime.now().strftime("%H:%M:%S")
+            error_msg = str(e)
+            if len(error_msg) > 50:
+                error_msg = error_msg[:50] + "..."
+            print(f"❌ [{current_time}] Keep-alive #{ping_count}: Ошибка - {error_msg}")
+        
+        # Ждём 14 минут (840 секунд) перед следующим запросом
+        # Меньше 15 минут (900 секунд) - чтобы Render не усыплял!
+        await asyncio.sleep(840)  # 14 минут
 
 # ==================== НАСТРОЙКИ ====================
 TOKEN = "8406827750:AAFj6wZlT0a6PKnShyXstrLZiguOddDu-VE"
@@ -1057,31 +1109,42 @@ async def cmd_start_full(message: types.Message, state: FSMContext):
         await state.clear()
         await show_start(message.from_user.id, state)
 
-# ==================== ЗАПУСК ====================
-async def run_bot():
-    """Запускает Telegram бота"""
-    print("🤖 Бот запущен...")
-    print("📊 Ожидаю сообщения...")
-    await dp.start_polling(bot)
-
+# ==================== ЗАПУСК FLASK ====================
 def run_flask_server():
     """Запускает Flask сервер"""
+    # Убираем предупреждение о development сервере
+    import warnings
+    warnings.filterwarnings("ignore", message=".*development server.*")
+    
     port = int(os.environ.get("PORT", 10000))
     print(f"🌐 Flask запускается на порту {port}")
     app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
+# ==================== ОСНОВНОЙ ЗАПУСК ====================
 async def main():
     """Основная функция запуска"""
-    # Запускаем Flask в отдельном потоке
+    print("🚀 Запуск системы...")
+    
+    # 1. Запускаем Flask в отдельном потоке
     import threading
     flask_thread = threading.Thread(target=run_flask_server, daemon=True)
     flask_thread.start()
     
     print("🌐 Flask запущен в отдельном потоке")
+    
+    # 2. Запускаем keep-alive в фоновой задаче
+    keep_alive_task = asyncio.create_task(ping_server())
+    print("🔄 Keep-alive запущен (запросы каждые 14 минут)")
+    
+    # 3. Запускаем бота
     print("🤖 Запуск Telegram бота...")
     
-    # Запускаем бота
-    await run_bot()
+    try:
+        await dp.start_polling(bot)
+    finally:
+        # Если бот останавливается, отменяем keep-alive
+        keep_alive_task.cancel()
+        print("🛑 Keep-alive остановлен")
 
 if __name__ == "__main__":
     # Настраиваем логирование
@@ -1089,3 +1152,5 @@ if __name__ == "__main__":
     
     # Запускаем асинхронный код
     asyncio.run(main())
+```
+
