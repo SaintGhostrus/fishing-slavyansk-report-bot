@@ -1,2 +1,3 @@
-aiogram==3.10.0
+aaiogram==3.10.0
 flask==2.3.3
+aiohttp==3.9.1
