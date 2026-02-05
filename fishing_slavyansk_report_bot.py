@@ -1,6 +1,4 @@
 
-
-```python
 import asyncio
 import os
 import logging
@@ -1153,4 +1151,5 @@ if __name__ == "__main__":
     # Запускаем асинхронный код
     asyncio.run(main())
 ```
+
 
